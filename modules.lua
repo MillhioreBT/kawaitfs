@@ -1,24 +1,41 @@
 if not Modules then
 	Modules = {}
 
-	function Modules:register(module, method, ...)
-		if not self[module.name] then
-			self[module.name] = module
-			setmetatable(module, {
-				__call = function (self, method, ...)
-					if self.enabled then
-						local args = table.pack(...)
-						return self[method](unpack(args))
-					end
+	local setmetamodule = function (module)
+		setmetatable(module, {
+			__call = function (self, method, ...)
+				if self.enabled then
+					return self[method](unpack(table.pack(...)))
 				end
-			})
+			end
+		})
+		return module
+	end
+
+	function Modules:register(newModule, method, ...)
+		local module = self[newModule.name]
+		if not module then
+			self[newModule.name] = newModule
+			setmetamodule(newModule)
 
 			-- If there is a load method we call it
-			if module.onLoad then
-				module.onLoad()
+			if newModule.onLoad then
+				newModule.onLoad()
 			end
 
-			module.init()
+			newModule.init()
+		else
+			-- Restore the previous state of the module before reloading
+			newModule.enabled = module.enabled
+			self[newModule.name] = newModule
+			setmetamodule(newModule)
+
+			-- If there is a load method we call it
+			if newModule.enabled and newModule.onLoad then
+				newModule.onLoad()
+			end
+
+			newModule.init()
 		end
 	end
 
@@ -39,22 +56,6 @@ if not Modules then
 			if module.onUnload then
 				module.onUnload()
 			end
-		end
-	end
-
-else
-	-- Reload Case
-	for method, module in pairs(Modules) do
-		if type(module) == "table" then
-
-			if module.enabled then
-				-- If there is a load method we call it
-				if module.onLoad then
-					module.onLoad()
-				end
-			end
-
-			module.init()
 		end
 	end
 end
