@@ -592,7 +592,7 @@ function action.onUse(player, item, fromPos, target, toPos, isHotkey)
     end
 
     local totalChance = foundChance.chance * (this.chance/100)
-    if isPerfectUpgrade ~= 1 then
+    if this.isPerfectUpgrade ~= 1 then
     if totalChance < math.random(1, 100) then
         if config.downgradeEnabled then
             local newLevel = foundChance.downLvl or 0
