@@ -590,6 +590,14 @@ function action.onUse(player, item, fromPos, target, toPos, isHotkey)
             end
         end
     end
+    -- =============== minRequireLvl  and maxRequireLvl
+    local isLevelReq = getObjLevel(target)
+    if isLevelReq < this.minRequireLvl then -- if your weapon level is less than required lvl for upgrade
+	return player:sendCancelMessage("Your upgrade item can only be used on " .. this.minRequireLvl .. "lvl or higher")
+    end
+    if isLevelReq >= this.maxRequireLvl then -- if you weapon level achieved maxLevel
+	return player:sendCancelMessage("Your upgrade item can only upgrade up to " .. this.maxRequireLvl .. "!")
+    end
 
     local totalChance = foundChance.chance * (this.chance/100)
     if this.isPerfectUpgrade ~= 1 then
