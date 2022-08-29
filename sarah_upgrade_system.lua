@@ -43,6 +43,7 @@ local config = {
         --.............START.............--
         [2178] = { -- Mind Stone
             chance=100,
+	    isPerfectUpgrade=1, -- if not 1 then normal chance calculation otherwise 100% chance for upgrade.
             minRequireLvl = 0,
             maxRequireLvl = 10,
             breakWhenFail = false,
@@ -589,8 +590,17 @@ function action.onUse(player, item, fromPos, target, toPos, isHotkey)
             end
         end
     end
+    -- =============== minRequireLvl  and maxRequireLvl
+    local isLevelReq = getObjLevel(target)
+    if isLevelReq < this.minRequireLvl then -- if your weapon level is less than required lvl for upgrade
+	return player:sendCancelMessage("Your upgrade item can only be used on " .. this.minRequireLvl .. "lvl or higher")
+    end
+    if isLevelReq >= this.maxRequireLvl then -- if you weapon level achieved maxLevel
+	return player:sendCancelMessage("Your upgrade item can only upgrade up to " .. this.maxRequireLvl .. "!")
+    end
 
     local totalChance = foundChance.chance * (this.chance/100)
+    if this.isPerfectUpgrade ~= 1 then
     if totalChance < math.random(1, 100) then
         if config.downgradeEnabled then
             local newLevel = foundChance.downLvl or 0
@@ -601,6 +611,7 @@ function action.onUse(player, item, fromPos, target, toPos, isHotkey)
         player:sendCancelMessage("The attempt to upgrade this item has failed.")
         target:getPosition():sendMagicEffect(CONST_ME_POFF)
         return use()
+    end
     end
 
     player:sendCancelMessage("The upgrade of the item is successful.")
