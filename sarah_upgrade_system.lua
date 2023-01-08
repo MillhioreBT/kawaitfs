@@ -366,16 +366,25 @@ for _, __ in pairs(conditions) do
     conditionCount = conditionCount +1
 end
 
+local validWeapons = {
+	[WEAPON_SWORD] = true,
+	[WEAPON_CLUB] = true,
+	[WEAPON_AXE] = true,
+	[WEAPON_WAND] = true,
+	[WEAPON_DISTANCE] = true,
+	[WEAPON_AMMO] = true
+}
+
 local function getPlayerWeapon(player)
     local weapon = player:getSlotItem(CONST_SLOT_LEFT)
-    if not weapon or weapon:getType():getWeaponType() == WEAPON_NONE then
-        weapon = player:getSlotItem(CONST_SLOT_RIGHT)
-        if not weapon or weapon:getType():getWeaponType() == WEAPON_NONE then
-            return
-        end
+    if weapon and validWeapons[weapon:getType():getWeaponType()] then
+    	return weapon
     end
 
-    return weapon
+    weapon = player:getSlotItem(CONST_SLOT_RIGHT)
+    if weapon and validWeapons[weapon:getType():getWeaponType()] then
+		return weapon
+	end
 end
 
 ---@return number
@@ -412,7 +421,7 @@ local function isValidObj(item)
 end
 
 local function isWeapon(item)
-    return item:getType():getWeaponType() ~= WEAPON_NONE
+    return validWeapons[item:getType():getWeaponType()]
 end
 
 local function isWand(item)
@@ -474,7 +483,6 @@ local function doUpgradeItem(item, this, newLevel)
 
         if type(value) == "number" and value ~= 0 then
             local increaseValue = this.upgrade[index] or this.upgrade[info.abilitie.type]
-            print(value, increaseValue)
             if not increaseValue then
                 print(string.format("[Warning] The skill %s or %s of the configuration does not exist.", index, info.abilitie.type))
             else
@@ -500,7 +508,6 @@ local slotBits = {
 local function usesSlot(itemType, slot)
 	return bit.band(itemType:getSlotPosition(), slotBits[slot] or 0) ~= 0
 end
-
 
 local function onDeEquip(player, slotPosition)
     for _, info in pairs(conditions) do
@@ -651,27 +658,44 @@ end
 
 ec:register(7)
 
+local isOriginWeapon = {
+	[ORIGIN_MELEE] = true,
+	[ORIGIN_RANGED] = true,
+	[ORIGIN_WAND] = true
+}
+
+local noDamageTypes = {
+	[COMBAT_HEALING] = true,
+	[COMBAT_UNDEFINEDDAMAGE] = true,
+	[COMBAT_LIFEDRAIN] = true,
+	[COMBAT_MANADRAIN] = true
+}
+
 local creatureEvent = CreatureEvent("SarahWesker_onHealthChange")
 
 function creatureEvent.onHealthChange(creature, attacker, primaryDamage, primaryType, secondaryDamage, secondaryType, origin)
+	if not creature or not attacker or creature == attacker then
+		return primaryDamage, primaryType, secondaryDamage, secondaryType
+	elseif not isOriginWeapon[origin] or noDamageTypes[primaryType] then
+		return primaryDamage, primaryType, secondaryDamage, secondaryType
+	end
+
     if attacker:isPlayer() then
-        local weapon
-        if primaryDamage < 0 and origin == ORIGIN_WAND then
-            weapon = getPlayerWeapon(attacker)
-            if weapon and isWand(weapon) then
+        local weapon = getPlayerWeapon(attacker)
+        if primaryDamage ~= 0 and origin == ORIGIN_WAND then
+            if weapon then
                 local wandDamage = weapon:getCustomAttribute("SarahWesker_WandDamage") or 0
                 if wandDamage > 0 then
-                    primaryDamage = primaryDamage - wandDamage
+                    primaryDamage = primaryDamage + wandDamage
                 end
             end
         end
 
-        if secondaryDamage < 0 and origin == ORIGIN_MELEE or origin == ORIGIN_WAND or origin == ORIGIN_RANGED then
-            weapon = weapon or getPlayerWeapon(attacker)
-            if weapon and isWeapon(weapon) then
+        if secondaryDamage ~= 0 then
+            if weapon then
                 local elementDamage = weapon:getCustomAttribute("SarahWesker_ElementDamage") or 0
                 if elementDamage > 0 then
-                    secondaryDamage = secondaryDamage - elementDamage
+                    secondaryDamage = secondaryDamage + elementDamage
                 end
             end
         end
